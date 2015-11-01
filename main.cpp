@@ -6,56 +6,30 @@
 #include "model.h"
 #include "geometry.h"
 #include "our_gl.h"
+#include "shader.h"
 #include "sdlwindow.h"
+#include <SDL2/SDL.h>
 
-Model *model        = NULL;
+const int WIDTH  = 800;
+const int HEIGHT = 800;
 
-const int width  = 800;
-const int height = 800;
+Vec3f LIGHT_DIR(1,1,1);
+Vec3f       EYE(1,1,3);
+Vec3f    CENTER(0,0,0);
+Vec3f        UP(0,1,0);
 
-Vec3f light_dir(1,1,1);
-Vec3f       eye(1,1,3);
-Vec3f    center(0,0,0);
-Vec3f        up(0,1,0);
-
-struct Shader : public IShader {
-    mat<2,3,float> varying_uv;  // triangle uv coordinates, written by the vertex shader, read by the fragment shader
-    mat<4,3,float> varying_tri; // triangle coordinates (clip coordinates), written by VS, read by FS
-    mat<3,3,float> varying_nrm; // normal per vertex to be interpolated by FS
-
-    virtual Vec4f vertex(int iface, int nthvert) {
-        varying_uv.set_col(nthvert, model->uv(iface, nthvert));
-        varying_nrm.set_col(nthvert, proj<3>((Projection*ModelView).invert_transpose()*embed<4>(model->normal(iface, nthvert), 0.f)));
-        Vec4f gl_Vertex = Projection*ModelView*embed<4>(model->vert(iface, nthvert));
-        varying_tri.set_col(nthvert, gl_Vertex);
-        return gl_Vertex;
+void draw_3d_model(Model &model, TGAImage &frame, float *zbuffer)
+{
+    Shader shader;
+    shader.setLightDirection(LIGHT_DIR);
+    shader.pModel = &model;
+    for (int i=0; i<model.nfaces(); i++) {
+        for (int j=0; j<3; j++) {
+            shader.vertex(i, j);
+        }
+        triangle(shader.varying_tri, shader, frame, zbuffer);
     }
-
-    virtual bool fragment(Vec3f bar, TGAColor &color) {
-        Vec3f bn = (varying_nrm*bar).normalize();
-        Vec2f uv = varying_uv*bar;
-        mat<3,3,float> ndc_tri; // column-vectors
-        for (int i=0; i<3; i++) ndc_tri.set_col(i, proj<3>(varying_tri.col(i)/varying_tri.col(i)[3]));
-        mat<3,3,float> A;
-        A[0] = ndc_tri.col(1)-ndc_tri.col(0);
-        A[1] = ndc_tri.col(2)-ndc_tri.col(0);
-        A[2] = bn;
-        A = A.invert();
-        Vec3f bu = A*Vec3f(varying_uv[0][1]-varying_uv[0][0], varying_uv[0][2]-varying_uv[0][0], 0);
-        Vec3f bv = A*Vec3f(varying_uv[1][1]-varying_uv[1][0], varying_uv[1][2]-varying_uv[1][0], 0);
-        mat<3,3,float> B;
-        B.set_col(0, bu.normalize());
-        B.set_col(1, bv.normalize());
-        B.set_col(2, bn);
-
-        Vec3f n = (B*model->normal(uv)).normalize();
-
-        float diff = std::max(0.f, n*light_dir);
-//        color = model->diffuse(uv)*diff;
-        color = TGAColor(255, 255, 255)*diff;
-        return false;
-    }
-};
+}
 
 int main(int argc, char** argv) {
     if (2>argc) {
@@ -63,30 +37,27 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::unique_ptr<float[]> zbuffer(new float[width*height]);
-    for (int i=width*height; i--; zbuffer[i] = -std::numeric_limits<float>::max());
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+    uint32_t startTime = SDL_GetTicks();
 
-    auto pFrame = std::make_shared<TGAImage>(width, height, TGAImage::RGB);
-    lookat(eye, center, up);
-    viewport(width/8, height/8, width*3/4, height*3/4);
-    projection(-1.f/(eye-center).norm());
-    light_dir = proj<3>((Projection*ModelView*embed<4>(light_dir, 0.f))).normalize();
+    std::unique_ptr<float[]> zbuffer(new float[WIDTH*HEIGHT]);
+    for (int i=WIDTH*HEIGHT; i--; zbuffer[i] = -std::numeric_limits<float>::max());
+
+    auto pFrame = std::make_shared<TGAImage>(WIDTH, HEIGHT, TGAImage::RGB);
+    lookat(EYE, CENTER, UP);
+    viewport(WIDTH/8, HEIGHT/8, WIDTH*3/4, HEIGHT*3/4);
+    projection(-1.f/(EYE-CENTER).norm());
 
     for (int m=1; m<argc; m++) {
-        model = new Model(argv[m]);
-        Shader shader;
-        for (int i=0; i<model->nfaces(); i++) {
-            for (int j=0; j<3; j++) {
-                shader.vertex(i, j);
-            }
-            triangle(shader.varying_tri, shader, *pFrame, zbuffer.get());
-        }
-        delete model;
+        std::unique_ptr<Model> pModel(new Model(argv[m]));
+        draw_3d_model(*pModel, *pFrame, zbuffer.get());
     }
     pFrame->flip_vertically(); // to place the origin in the bottom left corner of the image
     pFrame->write_tga_file("framebuffer.tga");
 
-    SDLWindow window(pFrame);
+    char title[1024];
+    sprintf(title, "Frame generated in %d milliseconds", SDL_GetTicks() - startTime);
+    SDLWindow window(pFrame, title);
     window.show();
 
     return 0;

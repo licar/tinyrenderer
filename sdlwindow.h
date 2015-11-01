@@ -6,7 +6,7 @@ class TGAImage;
 class SDLWindow
 {
 public:
-    explicit SDLWindow(std::shared_ptr<TGAImage> const& pImage);
+    explicit SDLWindow(std::shared_ptr<TGAImage> const& pImage, std::string const& title);
     ~SDLWindow();
 
     void show();

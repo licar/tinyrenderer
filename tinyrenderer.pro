@@ -7,7 +7,8 @@ HEADERS += \
     model.h \
     our_gl.h \
     tgaimage.h \
-    sdlwindow.h
+    sdlwindow.h \
+    shader.h
 
 SOURCES += \
     geometry.cpp \
@@ -15,4 +16,5 @@ SOURCES += \
     model.cpp \
     our_gl.cpp \
     tgaimage.cpp \
-    sdlwindow.cpp
+    sdlwindow.cpp \
+    shader.cpp

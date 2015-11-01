@@ -1,16 +1,12 @@
 #include "sdlwindow.h"
 #include <SDL2/SDL.h>
 #include "tgaimage.h"
-
-namespace {
-
-const char WINDOW_TITLE[] = "Rendered Frame";
-
-}
+#include <stdio.h>
 
 class SDLWindow::Impl
 {
 public:
+    std::string m_title;
     std::shared_ptr<TGAImage> m_pImage;
     SDL_Window *m_pWindow = nullptr;
     SDL_Surface *m_pWindowSurf = nullptr;
@@ -28,7 +24,7 @@ public:
     {
         destroy_window();
         uint32_t flags = 0;
-        m_pWindow = SDL_CreateWindow(WINDOW_TITLE,
+        m_pWindow = SDL_CreateWindow(m_title.c_str(),
                                     SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
                                     m_pImage->get_width(), m_pImage->get_height(), flags);
         m_pWindowSurf = SDL_GetWindowSurface(m_pWindow);
@@ -41,6 +37,7 @@ public:
         while (SDL_WaitEvent(&event)) {
             if (event.type == SDL_WINDOWEVENT) {
                 switch (event.window.event) {
+                case SDL_WINDOWEVENT_SHOWN:
                 case SDL_WINDOWEVENT_EXPOSED:
                 case SDL_WINDOWEVENT_ENTER:
                 case SDL_WINDOWEVENT_FOCUS_GAINED:
@@ -112,10 +109,11 @@ private:
     }
 };
 
-SDLWindow::SDLWindow(const std::shared_ptr<TGAImage> &pImage)
+SDLWindow::SDLWindow(const std::shared_ptr<TGAImage> &pImage, const std::string &title)
     : d(new Impl)
 {
     d->m_pImage = pImage;
+    d->m_title = title;
 }
 
 SDLWindow::~SDLWindow()

@@ -52,18 +52,19 @@ Vec3f barycentric(Vec2f A, Vec2f B, Vec2f C, Vec2f P) {
     return Vec3f(-1,1,1); // in this case generate negative coordinates, it will be thrown away by the rasterizator
 }
 
-void triangle(mat<4,3,float> &clipc, IShader &shader, TGAImage &image, float *zbuffer) {
+void triangle(mat<4,3,float> &clipc, IShader &shader, FrameTile &image) {
     mat<3,4,float> pts  = (Viewport*clipc).transpose(); // transposed to ease access to each of the points
     mat<3,2,float> pts2;
     for (int i=0; i<3; i++) pts2[i] = proj<2>(pts[i]/pts[i][3]);
 
     Vec2f bboxmin( std::numeric_limits<float>::max(),  std::numeric_limits<float>::max());
     Vec2f bboxmax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
-    Vec2f clamp(image.get_width()-1, image.get_height()-1);
+    Vec2f clampTopLeft(image.get_left(), image.get_top());
+    Vec2f clampBottomRight(image.get_right() - 1, image.get_bottom() - 1);
     for (int i=0; i<3; i++) {
         for (int j=0; j<2; j++) {
-            bboxmin[j] = std::max(0.f,      std::min(bboxmin[j], pts2[i][j]));
-            bboxmax[j] = std::min(clamp[j], std::max(bboxmax[j], pts2[i][j]));
+            bboxmin[j] = std::max(clampTopLeft[j],      std::min(bboxmin[j], pts2[i][j]));
+            bboxmax[j] = std::min(clampBottomRight[j], std::max(bboxmax[j], pts2[i][j]));
         }
     }
     Vec2i P;
@@ -74,10 +75,10 @@ void triangle(mat<4,3,float> &clipc, IShader &shader, TGAImage &image, float *zb
             Vec3f bc_clip    = Vec3f(bc_screen.x/pts[0][3], bc_screen.y/pts[1][3], bc_screen.z/pts[2][3]);
             bc_clip = bc_clip/(bc_clip.x+bc_clip.y+bc_clip.z);
             float frag_depth = clipc[2]*bc_clip;
-            if (bc_screen.x<0 || bc_screen.y<0 || bc_screen.z<0 || zbuffer[P.x+P.y*image.get_width()]>frag_depth) continue;
+            if (bc_screen.x<0 || bc_screen.y<0 || bc_screen.z<0 || image.get_z(P.x, P.y)>frag_depth) continue;
             bool discard = shader.fragment(bc_clip, color);
             if (!discard) {
-                zbuffer[P.x+P.y*image.get_width()] = frag_depth;
+                image.set_z(P.x, P.y, frag_depth);
                 image.set(P.x, P.y, color);
             }
         }

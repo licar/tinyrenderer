@@ -8,7 +8,8 @@ HEADERS += \
     our_gl.h \
     tgaimage.h \
     sdlwindow.h \
-    shader.h
+    shader.h \
+    frametile.h
 
 SOURCES += \
     geometry.cpp \
@@ -17,4 +18,5 @@ SOURCES += \
     our_gl.cpp \
     tgaimage.cpp \
     sdlwindow.cpp \
-    shader.cpp
+    shader.cpp \
+    frametile.cpp

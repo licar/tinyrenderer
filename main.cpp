@@ -18,7 +18,7 @@ Vec3f       EYE(1,1,3);
 Vec3f    CENTER(0,0,0);
 Vec3f        UP(0,1,0);
 
-void draw_3d_model(Model &model, TGAImage &frame, float *zbuffer)
+void draw_3d_model_tile(Model &model, FrameTile &frame)
 {
     Shader shader;
     shader.setLightDirection(LIGHT_DIR);
@@ -27,8 +27,29 @@ void draw_3d_model(Model &model, TGAImage &frame, float *zbuffer)
         for (int j=0; j<3; j++) {
             shader.vertex(i, j);
         }
-        triangle(shader.varying_tri, shader, frame, zbuffer);
+        triangle(shader.varying_tri, shader, frame);
     }
+}
+
+void draw_3d_model(Model &model, TGAImage &frame, float *zbuffer)
+{
+    const int width1 = frame.get_width() / 2;
+    const int width2 = frame.get_width() - width1;
+    const int height1 = frame.get_height() / 2;
+    const int height2 = frame.get_height() - height1;
+
+    FrameTile tile1(Vec2i(0, 0), Vec2i(width1, height1));
+    FrameTile tile2(Vec2i(width1, 0), Vec2i(width2, height1));
+    FrameTile tile3(Vec2i(0, height1), Vec2i(width2, height2));
+    FrameTile tile4(Vec2i(width1, height1), Vec2i(width2, height2));
+    tile1.init(frame, zbuffer);
+    tile2.init(frame, zbuffer);
+    tile3.init(frame, zbuffer);
+    tile4.init(frame, zbuffer);
+    draw_3d_model_tile(model, tile1);
+    draw_3d_model_tile(model, tile2);
+    draw_3d_model_tile(model, tile3);
+    draw_3d_model_tile(model, tile4);
 }
 
 int main(int argc, char** argv) {

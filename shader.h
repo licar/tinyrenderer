@@ -1,3 +1,4 @@
+#pragma once
 #include "our_gl.h"
 
 class Model;

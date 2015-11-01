@@ -1,7 +1,8 @@
-#ifndef __IMAGE_H__
-#define __IMAGE_H__
+#pragma once
 
 #include <fstream>
+#include <string.h>
+#include "geometry.h"
 
 #pragma pack(push,1)
 struct TGA_Header {
@@ -60,21 +61,15 @@ struct TGAColor {
     }
 };
 
-class TGAImage {
-protected:
-    unsigned char* data;
-    int width;
-    int height;
-    int bytespp;
-
-    bool   load_rle_data(std::ifstream &in);
-    bool unload_rle_data(std::ofstream &out);
+class TGAImage
+{
 public:
     enum Format {
         GRAYSCALE = 1,
         RGB = 3,
         RGBA = 4
     };
+
     TGAImage();
     TGAImage(int w, int h, Format bpp);
     TGAImage(const TGAImage &img);
@@ -83,17 +78,25 @@ public:
     bool flip_horizontally();
     bool flip_vertically();
     bool scale(int w, int h);
-    TGAColor get(int x, int y);
-    bool set(int x, int y, TGAColor &c);
-    bool set(int x, int y, const TGAColor &c);
     ~TGAImage();
     TGAImage & operator =(const TGAImage &img);
-    int get_width();
-    int get_height();
+    int get_width() const;
+    int get_height() const;
+    Vec2i get_size() const;
     int get_bytespp();
     unsigned char *buffer();
     void clear();
+    TGAColor get(int x, int y);
+    bool set(int x, int y, const TGAColor &c);
+
+private:
+    bool   load_rle_data(std::ifstream &in);
+    bool unload_rle_data(std::ofstream &out);
+
+    inline size_t index(int x, int y) const;
+
+    unsigned char* m_data;
+    int m_width;
+    int m_height;
+    int m_bytespp;
 };
-
-#endif //__IMAGE_H__
-

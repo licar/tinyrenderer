@@ -45,7 +45,7 @@ struct TGAColor {
         for (int i=0; i<(int)bpp; i++) {
             bgra[i] = p[i];
         }
-        for (int i=bpp; i<4; i++) {
+        for (int i=(int)bpp; i<4; i++) {
             bgra[i] = 0;
         }
     }
@@ -71,11 +71,12 @@ protected:
     bool unload_rle_data(std::ofstream &out);
 public:
     enum Format {
-        GRAYSCALE=1, RGB=3, RGBA=4
+        GRAYSCALE = 1,
+        RGB = 3,
+        RGBA = 4
     };
-
     TGAImage();
-    TGAImage(int w, int h, int bpp);
+    TGAImage(int w, int h, Format bpp);
     TGAImage(const TGAImage &img);
     bool read_tga_file(const char *filename);
     bool write_tga_file(const char *filename, bool rle=true);

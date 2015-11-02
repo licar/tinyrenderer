@@ -1,15 +1,19 @@
 #include "sdlwindow.h"
 #include <SDL2/SDL.h>
-#include "tgaimage.h"
 #include <stdio.h>
+#include <thread>
+#include "tgaimage.h"
 
 class SDLWindow::Impl
 {
 public:
-    std::string m_title;
     std::shared_ptr<TGAImage> m_pImage;
+    Vec2i m_windowSize;
     SDL_Window *m_pWindow = nullptr;
     SDL_Surface *m_pWindowSurf = nullptr;
+    int m_startTicks = 0;
+    int m_framesCount = 0;
+    std::function<void ()> m_onIdle;
 
     Impl()
     {
@@ -24,9 +28,9 @@ public:
     {
         destroy_window();
         uint32_t flags = 0;
-        m_pWindow = SDL_CreateWindow(m_title.c_str(),
+        m_pWindow = SDL_CreateWindow("Waiting for 1st frame...",
                                     SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                                    m_pImage->get_width(), m_pImage->get_height(), flags);
+                                    m_windowSize.x, m_windowSize.y, flags);
         m_pWindowSurf = SDL_GetWindowSurface(m_pWindow);
         SDL_ShowWindow(m_pWindow);
     }
@@ -34,19 +38,23 @@ public:
     void wait_for_closed()
     {
         SDL_Event event;
-        while (SDL_WaitEvent(&event)) {
-            if (event.type == SDL_WINDOWEVENT) {
-                switch (event.window.event) {
-                case SDL_WINDOWEVENT_SHOWN:
-                case SDL_WINDOWEVENT_EXPOSED:
-                case SDL_WINDOWEVENT_ENTER:
-                case SDL_WINDOWEVENT_FOCUS_GAINED:
-                    draw_image();
-                    break;
-                case SDL_WINDOWEVENT_CLOSE:
-                    return;
+        for (;;) {
+            while (SDL_PollEvent(&event)) {
+                if (event.type == SDL_WINDOWEVENT) {
+                    switch (event.window.event) {
+                    case SDL_WINDOWEVENT_SHOWN:
+                    case SDL_WINDOWEVENT_EXPOSED:
+                    case SDL_WINDOWEVENT_ENTER:
+                    case SDL_WINDOWEVENT_FOCUS_GAINED:
+                        draw_image();
+                        break;
+                    case SDL_WINDOWEVENT_CLOSE:
+                        return;
+                    }
                 }
             }
+            on_idle();
+            draw_image();
         }
     }
 
@@ -58,7 +66,42 @@ public:
         }
     }
 
+    void swap_buffers(std::shared_ptr<TGAImage> &pImage)
+    {
+        std::swap(pImage, m_pImage);
+        if (!m_pImage)
+        {
+            init_framebuffer();
+        }
+        else
+        {
+            ++m_framesCount;
+            int averageFrameTime = (SDL_GetTicks() - m_startTicks) / m_framesCount;
+            char title[1024];
+            sprintf(title, "Rendered %d frames, average time %d ms", m_framesCount, averageFrameTime);
+            SDL_SetWindowTitle(m_pWindow, title);
+            SDL_UpdateWindowSurface(m_pWindow);
+        }
+    }
+
+    void init_framebuffer()
+    {
+        m_pImage = std::make_shared<TGAImage>(m_windowSize.x, m_windowSize.y, TGAImage::RGB);
+    }
+
 private:
+    void on_idle()
+    {
+        if (m_onIdle)
+        {
+            m_onIdle();
+        }
+        else
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    }
+
     void draw_image()
     {
         SDL_Surface *pImageSurf = create_tga_surface(*m_pImage);
@@ -109,21 +152,36 @@ private:
     }
 };
 
-SDLWindow::SDLWindow(const std::shared_ptr<TGAImage> &pImage, const std::string &title)
+SDLWindow::SDLWindow(int width, int height)
     : d(new Impl)
 {
-    d->m_pImage = pImage;
-    d->m_title = title;
+    d->m_startTicks = SDL_GetTicks();
+    d->m_windowSize = Vec2i(width, height);
+    d->init_framebuffer();
 }
 
 SDLWindow::~SDLWindow()
 {
 }
 
+void SDLWindow::swapBuffers(std::shared_ptr<TGAImage> &pImage)
+{
+    return d->swap_buffers(pImage);
+}
+
 void SDLWindow::show()
 {
     d->create_window();
+}
+
+void SDLWindow::wait_for_closed()
+{
     d->wait_for_closed();
     d->destroy_window();
+}
+
+void SDLWindow::do_on_idle(std::function<void ()> action)
+{
+    d->m_onIdle = action;
 }
 

@@ -30,7 +30,8 @@ bool Shader::fragment(Vec3f bar, TGAColor &color)
 
     Vec3f n = (B*pModel->normal(uv)).normalize();
 
-    float diff = std::max(0.f, n*light_dir);
+    float intensity = n*light_dir;
+    float diff = std::max<float>(0.f, intensity + 0.1 * pow(intensity, 10));
     color = TGAColor(255, 255, 255)*diff;
     return false;
 }

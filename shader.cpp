@@ -1,5 +1,6 @@
 #include "shader.h"
 #include "model.h"
+#include <algorithm>
 
 Vec4f Shader::vertex(int iface, int nthvert)
 {

@@ -8,7 +8,7 @@
 #include "our_gl.h"
 #include "shader.h"
 #include "sdlwindow.h"
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 const int WIDTH  = 800;
 const int HEIGHT = 800;

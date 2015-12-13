@@ -2,6 +2,7 @@
 #include <limits>
 #include <cstdlib>
 #include "our_gl.h"
+#include <algorithm>
 
 Matrix ModelView;
 Matrix Viewport;
@@ -63,7 +64,7 @@ void triangle(mat<4,3,float> &clipc, IShader &shader, FrameTile &image) {
     Vec2f clampBottomRight(image.get_right() - 1, image.get_bottom() - 1);
     for (int i=0; i<3; i++) {
         for (int j=0; j<2; j++) {
-            bboxmin[j] = std::max(clampTopLeft[j],      std::min(bboxmin[j], pts2[i][j]));
+            bboxmin[j] = std::max(clampTopLeft[j], std::min(bboxmin[j], pts2[i][j]));
             bboxmax[j] = std::min(clampBottomRight[j], std::max(bboxmax[j], pts2[i][j]));
         }
     }

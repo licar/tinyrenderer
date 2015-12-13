@@ -1,5 +1,5 @@
 #include "sdlwindow.h"
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <stdio.h>
 #include <thread>
 #include "tgaimage.h"

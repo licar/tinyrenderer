@@ -8,7 +8,9 @@
 #include "our_gl.h"
 #include "shader.h"
 #include "sdlwindow.h"
-#include <SDL.h>
+#include <SDL2/SDL.h>
+#include "threadpool.h"
+#include <windows.h>
 
 const int WIDTH  = 800;
 const int HEIGHT = 800;
@@ -47,7 +49,7 @@ void draw_3d_model_tile(Model &model, FrameTile &frame)
     }
 }
 
-void draw_3d_model_simple(ModelPtrArray const& models, TGAImage &frame, float *zbuffer)
+void draw_3d_model_simple(ModelPtrArray const& models, TGAImage &frame, float *zbuffer, ThreadPool &threadPool)
 {
     const int width1 = frame.get_width() / 2;
     const int width2 = frame.get_width() - width1;
@@ -62,15 +64,22 @@ void draw_3d_model_simple(ModelPtrArray const& models, TGAImage &frame, float *z
     tile2.init(frame, zbuffer);
     tile3.init(frame, zbuffer);
     tile4.init(frame, zbuffer);
+
     for (auto const& pModel : models) {
-        draw_3d_model_tile(*pModel, tile1);
-        draw_3d_model_tile(*pModel, tile2);
-        draw_3d_model_tile(*pModel, tile3);
-        draw_3d_model_tile(*pModel, tile4);
+        threadPool.runAsync(draw_3d_model_tile, *pModel, tile1);
+        threadPool.runAsync(draw_3d_model_tile, *pModel, tile2);
+        threadPool.runAsync(draw_3d_model_tile, *pModel, tile3);
+        threadPool.runAsync(draw_3d_model_tile, *pModel, tile4);
+    }
+    while (!threadPool.IsEmpty())
+    {
+        Sleep(0);
     }
 }
 
-int main(int argc, char** argv) {
+int qMain(int argc, char** argv) {
+    ThreadPool threadPool(4);
+
     if (2>argc) {
         std::cerr << "Usage: " << argv[0] << " obj/model.obj" << std::endl;
         return 1;
@@ -95,7 +104,7 @@ int main(int argc, char** argv) {
         lookat(eye, CENTER, UP);
         viewport(WIDTH/8, HEIGHT/8, WIDTH*3/4, HEIGHT*3/4);
         projection(-1.f/(eye-CENTER).norm());
-        draw_3d_model_simple(models, *pFrame, zbuffer.get());
+        draw_3d_model_simple(models, *pFrame, zbuffer.get(), threadPool);
         pFrame->flip_vertically(); // to place the origin in the bottom left corner of the image
         window.swapBuffers(pFrame);
     });
